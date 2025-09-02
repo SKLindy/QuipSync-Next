@@ -1,103 +1,182 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useState } from 'react';
+
+export default function HomePage() {
+  const [storyInput, setStoryInput] = useState('');
+  const [songTitle, setSongTitle] = useState('');
+  const [artist, setArtist] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [storyDetails, setStoryDetails] = useState<string | null>(null);
+  const [songAnalysis, setSongAnalysis] = useState<string | null>(null);
+  const [whyThisWorks, setWhyThisWorks] = useState<string | null>(null);
+  const [scripts, setScripts] = useState<Array<{script: string; deliveryNotes: string}>>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onGenerate() {
+    setError(null);
+    setLoading(true);
+    setStoryDetails(null);
+    setSongAnalysis(null);
+    setWhyThisWorks(null);
+    setScripts([]);
+
+    try {
+      let story = storyInput.trim();
+
+      // If it's a URL, fetch & extract text first
+      if (/^https?:\/\/\S+$/i.test(story)) {
+        const r = await fetch('/api/extract', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: story }),
+        });
+        if (!r.ok) {
+          const t = await r.text();
+          throw new Error(`Extract failed ${r.status}: ${t.slice(0, 200)}`);
+        }
+        const data = await r.json();
+        story = (data.text || '').slice(0, 4000); // cap text length
+      }
+
+      if (!story) throw new Error('Please enter a story (text or URL).');
+      if (!songTitle.trim() || !artist.trim()) throw new Error('Please enter a song title and artist.');
+
+      // Build the same kind of prompt your API expects
+      const prompt = `You are helping a radio DJ create compelling transition scripts.
+
+STORY INPUT: """${story}"""
+SONG: "${songTitle}" by ${artist}
+
+Please return ONLY valid JSON with the keys: storyDetails, songAnalysis, whyThisWorks, scripts (array of 3 objects with {script, deliveryNotes}), where:
+- Script 1 is approx 20–25 seconds when spoken
+- Script 2 is approx 10–15 seconds
+- Script 3 is approx 5–10 seconds
+`;
+
+      const resp = await fetch('/api/complete-json', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'script', prompt }),
+      });
+      if (!resp.ok) {
+        const t = await resp.text();
+        throw new Error(`API ${resp.status}: ${t.slice(0, 200)}`);
+      }
+      const json = await resp.json();
+      const d = json?.data;
+      if (!d || !Array.isArray(d.scripts)) throw new Error('Unexpected API response.');
+
+      setStoryDetails(d.storyDetails);
+      setSongAnalysis(d.songAnalysis);
+      setWhyThisWorks(d.whyThisWorks);
+      setScripts(d.scripts);
+    } catch (e: unknown) {
+      setError((e as Error).message || String(e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <main className="min-h-screen bg-gray-50">
+      <div className="max-w-3xl mx-auto p-6">
+        <h1 className="text-3xl font-bold mb-2">QuipSync (Beta)</h1>
+        <p className="text-gray-600 mb-6">Enter a story (URL or text), plus the next song. We’ll generate three on-air transitions.</p>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+        <div className="space-y-4 bg-white p-4 rounded-xl shadow">
+          <div>
+            <label className="block text-sm font-medium mb-1">Story (URL or text)</label>
+            <textarea
+              className="w-full p-3 border rounded-lg"
+              rows={4}
+              placeholder="Paste a URL (we'll fetch & clean it) or type/paste the story text"
+              value={storyInput}
+              onChange={(e) => setStoryInput(e.target.value)}
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Song Title</label>
+              <input
+                className="w-full p-3 border rounded-lg"
+                placeholder='e.g. "The Good Ones"'
+                value={songTitle}
+                onChange={(e) => setSongTitle(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Artist</label>
+              <input
+                className="w-full p-3 border rounded-lg"
+                placeholder="e.g. Gabby Barrett"
+                value={artist}
+                onChange={(e) => setArtist(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <button
+            onClick={onGenerate}
+            disabled={loading}
+            className="inline-flex items-center px-5 py-3 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 disabled:opacity-50"
           >
-            Read our docs
-          </a>
+            {loading ? 'Generating…' : 'Generate Scripts'}
+          </button>
+
+          {error && (
+            <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700">
+              {error}
+            </div>
+          )}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+
+        {(storyDetails || songAnalysis || scripts.length > 0) && (
+          <div className="mt-8 space-y-6">
+            {storyDetails && (
+              <div className="bg-white p-4 rounded-xl shadow border">
+                <h2 className="font-semibold mb-2">Story Summary</h2>
+                <p className="text-gray-800 whitespace-pre-wrap">{storyDetails}</p>
+              </div>
+            )}
+
+            {songAnalysis && (
+              <div className="bg-white p-4 rounded-xl shadow border">
+                <h2 className="font-semibold mb-2">Song Analysis</h2>
+                <p className="text-gray-800 whitespace-pre-wrap">{songAnalysis}</p>
+              </div>
+            )}
+
+            {whyThisWorks && (
+              <div className="bg-white p-4 rounded-xl shadow border">
+                <h2 className="font-semibold mb-2">Why This Works</h2>
+                <p className="text-gray-800 whitespace-pre-wrap">{whyThisWorks}</p>
+              </div>
+            )}
+
+            {scripts.length > 0 && (
+              <div className="bg-white p-4 rounded-xl shadow border">
+                <h2 className="font-semibold mb-4">Generated Scripts</h2>
+                <div className="space-y-4">
+                  {scripts.map((s, i) => (
+                    <div key={i} className="border rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-medium">Option {i + 1}</span>
+                        <span className="text-xs text-gray-500">
+                          {i === 0 ? '≈20–25s' : i === 1 ? '≈10–15s' : '≈5–10s'}
+                        </span>
+                      </div>
+                      <pre className="whitespace-pre-wrap text-sm text-gray-900">{s.script}</pre>
+                      <div className="mt-2 text-xs text-gray-600"><strong>Delivery Notes:</strong> {s.deliveryNotes}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </main>
   );
 }
