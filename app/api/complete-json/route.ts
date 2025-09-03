@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
+import { createAnthropic, resolveModel, modelId } from '@/lib/llm';
 
 const zScriptResponse = z.object({
   storyDetails: z.string().min(1),
@@ -34,10 +35,12 @@ async function completeStrictJSON(opts: {
   userPrompt: string,
   schema: z.ZodTypeAny,
   example: any,
+  model: string,
   maxTokens?: number,
   temperature?: number,
   retries?: number
 }) {
+
   const {
     anthropic,
     userPrompt,
@@ -61,11 +64,12 @@ ${JSON.stringify(example, null, 2)}`;
 
   for (let i = 0; i <= retries; i++) {
     const msg = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-latest',
-      max_tokens: maxTokens,
-      temperature,
-      messages
-    });
+  model: opts.model,
+  max_tokens: maxTokens,
+  temperature,
+  messages
+});
+
     const text = (msg.content ?? [])
       .map((c: any) => c?.text || '')
       .join('');
@@ -105,7 +109,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Server missing ANTHROPIC_API_KEY' }, { status: 500 });
     }
 
-    const anthropic = new Anthropic({ apiKey });
+    const anthropic = createAnthropic(apiKey);
+const selectedModel = resolveModel(process.env.CLAUDE_MODEL); // 'claude-3.5-sonnet' default, or 'claude-3-opus'
+const rid = Math.random().toString(36).slice(2, 8);
+const t0 = Date.now();
+console.log(`[complete-json:${rid}] start mode=${mode} model=${selectedModel}`);
 
     if (mode === 'script') {
       const example = {
@@ -119,18 +127,21 @@ export async function POST(req: NextRequest) {
         ]
       };
 
-      const data = await completeStrictJSON({
-        anthropic,
-        userPrompt: prompt,
-        schema: zScriptResponse,
-        example,
-        maxTokens: 1800,
-        temperature: 0.7,
-        retries: 2
-      });
+     
+const data = await completeStrictJSON({
+  anthropic,
+  userPrompt: prompt,
+  schema: zScriptResponse,
+  example,
+  maxTokens: 1800,
+  temperature: 0.7,
+  retries: 2,
+  model: modelId(selectedModel)
+});
 
-      return NextResponse.json({ ok: true, data });
-    }
+      console.log(`[complete-json:${rid}] done in ${Date.now() - t0}ms`);
+return NextResponse.json({ ok: true, data });
+    
 
     if (mode === 'style') {
       const example = {
@@ -147,10 +158,12 @@ export async function POST(req: NextRequest) {
         example,
         maxTokens: 1200,
         temperature: 0.5,
-        retries: 2
+        retries: 2,
+model: modelId(selectedModel)
       });
 
-      return NextResponse.json({ ok: true, data });
+      console.log(`[complete-json:${rid}] done in ${Date.now() - t0}ms`);
+return NextResponse.json({ ok: true, data });
     }
 
     return NextResponse.json({ error: 'Unhandled mode' }, { status: 400 });
