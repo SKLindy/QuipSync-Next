@@ -92,15 +92,18 @@ ${JSON.stringify(example, null, 2)}`;
 }
 
 export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json().catch(() => ({}));
-    const mode = (body?.mode ?? '').toString();
-    const prompt = (body?.prompt ?? '').toString();
+  const rid = Math.random().toString(36).slice(2, 8);
+  const t0 = Date.now();
 
-    if (!['script', 'style'].includes(mode)) {
+  try {
+    const body = await req.json();
+    const mode = (body?.mode as string | undefined)?.trim();
+    const prompt = (body?.prompt as string | undefined) ?? '';
+
+    if (!mode || !['script', 'style'].includes(mode)) {
       return NextResponse.json({ error: 'Invalid mode (use "script" or "style")' }, { status: 400 });
     }
-    if (!prompt) {
+    if (!prompt.trim()) {
       return NextResponse.json({ error: 'Missing prompt' }, { status: 400 });
     }
 
@@ -109,46 +112,44 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Server missing ANTHROPIC_API_KEY' }, { status: 500 });
     }
 
+    // Use our helper + model switch
     const anthropic = createAnthropic(apiKey);
-const selectedModel = resolveModel(process.env.CLAUDE_MODEL); // 'claude-3.5-sonnet' default, or 'claude-3-opus'
-const rid = Math.random().toString(36).slice(2, 8);
-const t0 = Date.now();
-console.log(`[complete-json:${rid}] start mode=${mode} model=${selectedModel}`);
+    const selectedModel = resolveModel(process.env.CLAUDE_MODEL); // 'claude-3.5-sonnet' (default) or 'claude-3-opus'
+    console.log(`[complete-json:${rid}] start mode=${mode} model=${selectedModel}`);
 
     if (mode === 'script') {
       const example = {
-        storyDetails: "string",
-        songAnalysis: "string",
-        whyThisWorks: "string",
+        storyDetails: 'Example summary',
+        songAnalysis: 'Example analysis',
+        whyThisWorks: 'Short rationale',
         scripts: [
-          { script: "string", deliveryNotes: "string" },
-          { script: "string", deliveryNotes: "string" },
-          { script: "string", deliveryNotes: "string" }
+          { script: 'Long script example', deliveryNotes: 'notes' },
+          { script: 'Medium script example', deliveryNotes: 'notes' },
+          { script: 'Short script example', deliveryNotes: 'notes' }
         ]
       };
 
-     
-const data = await completeStrictJSON({
-  anthropic,
-  userPrompt: prompt,
-  schema: zScriptResponse,
-  example,
-  maxTokens: 1800,
-  temperature: 0.7,
-  retries: 2,
-  model: modelId(selectedModel)
-});
+      const data = await completeStrictJSON({
+        anthropic,
+        userPrompt: prompt,
+        schema: zScriptResponse,
+        example,
+        maxTokens: 1800,
+        temperature: 0.7,
+        retries: 2,
+        model: modelId(selectedModel)
+      });
 
       console.log(`[complete-json:${rid}] done in ${Date.now() - t0}ms`);
-return NextResponse.json({ ok: true, data });
-    
+      return NextResponse.json({ ok: true, data });
+    }
 
     if (mode === 'style') {
       const example = {
-        styleProfile: "string",
-        keyCharacteristics: ["string"],
-        samplePhrases: ["string"],
-        instructions: "string"
+        styleProfile: 'A cohesive description of the DJ persona',
+        keyCharacteristics: ['witty', 'warm', 'punchy'],
+        samplePhrases: ['let’s roll the windows down', 'right on cue'],
+        instructions: 'Keep sentences tight, land a hook in first 3 lines.'
       };
 
       const data = await completeStrictJSON({
@@ -159,18 +160,21 @@ return NextResponse.json({ ok: true, data });
         maxTokens: 1200,
         temperature: 0.5,
         retries: 2,
-model: modelId(selectedModel)
+        model: modelId(selectedModel)
       });
 
       console.log(`[complete-json:${rid}] done in ${Date.now() - t0}ms`);
-return NextResponse.json({ ok: true, data });
+      return NextResponse.json({ ok: true, data });
     }
 
+    // Fallback (shouldn’t hit because we validate `mode` above)
     return NextResponse.json({ error: 'Unhandled mode' }, { status: 400 });
   } catch (e: any) {
+    console.error(`[complete-json:${rid}] error`, e);
     return NextResponse.json(
       { error: 'LLM JSON endpoint failed', detail: e?.message ?? String(e) },
       { status: 500 }
     );
   }
 }
+
