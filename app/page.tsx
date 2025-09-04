@@ -129,31 +129,37 @@ Please return ONLY valid JSON with the keys: storyDetails, songAnalysis, whyThis
             </div>
           </div>
 
-          <button
-            onClick={onGenerate}
-            disabled={loading}
-            className="inline-flex items-center px-5 py-3 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 disabled:opacity-50"
-          >
-            {loading ? 'Generating…' : 'Generate Scripts'}
-          <div className="border-t pt-4">
+{/* Style picker */}
+<div className="border-t pt-4">
   <label className="block text-sm font-medium mb-2">Script Style</label>
-<div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-  {STYLES.map((s) => (
-    <button
-      key={s.id}
-      type="button"
-      onClick={() => setSelectedStyle(s.id)}
-      className={`px-3 py-2 rounded-lg border text-sm ${
-        selectedStyle === s.id
-          ? 'bg-indigo-600 text-white border-indigo-600'
-          : 'bg-white text-gray-800 border-gray-300 hover:bg-gray-50'
-      }`}
-    >
-      {s.name}
-    </button>
-  ))}
+  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+    {STYLES.map((s) => (
+      <button
+        key={s.id}
+        type="button"
+        onClick={() => setSelectedStyle(s.id)}
+        className={`px-3 py-2 rounded-lg border text-sm ${
+          selectedStyle === s.id
+            ? 'bg-indigo-600 text-white border-indigo-600'
+            : 'bg-white text-gray-800 border-gray-300 hover:bg-gray-50'
+        }`}
+      >
+        {s.name}
+      </button>
+    ))}
+  </div>
+  <p className="mt-2 text-xs text-gray-500">
+    Pick a tone—this will shape phrasing, pacing, and the emotional bridge.
+  </p>
 </div>
 
+{/* Generate button */}
+<button
+  onClick={onGenerate}
+  disabled={loading}
+  className="inline-flex items-center px-5 py-3 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 disabled:opacity-50"
+>
+  {loading ? 'Generating…' : 'Generate Scripts'}
 </button>
 
           {error && (
