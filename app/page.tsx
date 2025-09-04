@@ -12,7 +12,16 @@ export default function HomePage() {
   const [whyThisWorks, setWhyThisWorks] = useState<string | null>(null);
   const [scripts, setScripts] = useState<Array<{script: string; deliveryNotes: string}>>([]);
   const [error, setError] = useState<string | null>(null);
-const [selectedStyle, setSelectedStyle] = useState<'conversational'|'humorous'|'touching'|'inspiring'|'dramatic'|'reflective'>('conversational');
+const [selectedStyle, setSelectedStyle] = useState<(typeof STYLES)[number]['id']>('conversational');
+
+const STYLES = [
+  { id: 'conversational', name: 'Conversational' },
+  { id: 'humorous',       name: 'Humorous' },
+  { id: 'touching',       name: 'Touching' },
+  { id: 'inspiring',      name: 'Inspiring' },
+  { id: 'dramatic',       name: 'Dramatic' },
+  { id: 'reflective',     name: 'Reflective' }
+] as const;
 
 
   async function onGenerate() {
@@ -128,30 +137,21 @@ Please return ONLY valid JSON with the keys: storyDetails, songAnalysis, whyThis
             {loading ? 'Generating…' : 'Generate Scripts'}
           <div className="border-t pt-4">
   <label className="block text-sm font-medium mb-2">Script Style</label>
-  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-    {[
-      { id: 'conversational', name: 'Conversational' },
-      { id: 'humorous', name: 'Humorous' },
-      { id: 'touching', name: 'Touching' },
-      { id: 'inspiring', name: 'Inspiring' },
-      { id: 'dramatic', name: 'Dramatic' },
-      { id: 'reflective', name: 'Reflective' }
-    ].map(s => (
-      <button
-        key={s.id}
-        type="button"
-        onClick={() => setSelectedStyle(s.id as any)}
-        className={`px-3 py-2 rounded-lg border text-sm ${
-          selectedStyle === s.id
-            ? 'bg-indigo-600 text-white border-indigo-600'
-            : 'bg-white text-gray-800 border-gray-300 hover:bg-gray-50'
-        }`}
-      >
-        {s.name}
-      </button>
-    ))}
-  </div>
-  <p className="mt-2 text-xs text-gray-500">Pick a tone—this will shape phrasing, pacing, and the emotional bridge.</p>
+<div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+  {STYLES.map((s) => (
+    <button
+      key={s.id}
+      type="button"
+      onClick={() => setSelectedStyle(s.id)}
+      className={`px-3 py-2 rounded-lg border text-sm ${
+        selectedStyle === s.id
+          ? 'bg-indigo-600 text-white border-indigo-600'
+          : 'bg-white text-gray-800 border-gray-300 hover:bg-gray-50'
+      }`}
+    >
+      {s.name}
+    </button>
+  ))}
 </div>
 
 </button>
