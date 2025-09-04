@@ -91,6 +91,81 @@ ${JSON.stringify(example, null, 2)}`;
   throw lastErr ?? new Error('Validation failed');
 }
 
+type StyleId = 'conversational' | 'humorous' | 'touching' | 'inspiring' | 'dramatic' | 'reflective';
+
+function styleConfig(style: string): { block: string; temperature: number } {
+  const s = (style as StyleId) ?? 'conversational';
+  switch (s) {
+    case 'humorous':
+      return {
+        temperature: 0.85,
+        block: [
+          'STYLE = HUMOROUS',
+          '- Light, witty, clever one-liners (no meanness).',
+          '- Use playful analogies and surprising twists.',
+          '- Keep jokes crisp; land a clean tag line.',
+          '- Avoid inside jokes or niche references.',
+        ].join('\n')
+      };
+    case 'touching':
+      return {
+        temperature: 0.7,
+        block: [
+          'STYLE = TOUCHING',
+          '- Warm, heartfelt, empathetic.',
+          '- Gentle pacing; short, sincere sentences.',
+          '- Focus on shared human moments and connection.',
+          '- Avoid melodrama; be genuine.',
+        ].join('\n')
+      };
+    case 'inspiring':
+      return {
+        temperature: 0.8,
+        block: [
+          'STYLE = INSPIRING',
+          '- Upbeat, motivational, forward-looking.',
+          '- Use active voice and momentum.',
+          '- One memorable, quotable line.',
+          '- Avoid cliches; keep it fresh.',
+        ].join('\n')
+      };
+    case 'dramatic':
+      return {
+        temperature: 0.9,
+        block: [
+          'STYLE = DRAMATIC',
+          '- Bold, cinematic phrasing; high contrast.',
+          '- Build tension, then release into the song.',
+          '- Use vivid verbs; avoid purple prose.',
+          '- One strong image; no more than one.',
+        ].join('\n')
+      };
+    case 'reflective':
+      return {
+        temperature: 0.65,
+        block: [
+          'STYLE = REFLECTIVE',
+          '- Thoughtful, contemplative, slightly poetic.',
+          '- Calm cadence; precise language.',
+          '- Tie the story to a broader takeaway.',
+          '- Avoid rambling; keep it grounded.',
+        ].join('\n')
+      };
+    case 'conversational':
+    default:
+      return {
+        temperature: 0.7,
+        block: [
+          'STYLE = CONVERSATIONAL',
+          '- Natural, friendly, relatable; talk like a friend.',
+          '- Clear transitions; no corporate tone.',
+          '- One crisp hook; keep it human.',
+          '- Avoid filler like “um/uh/kind of.”',
+        ].join('\n')
+      };
+  }
+}
+
 export async function POST(req: NextRequest) {
   const rid = Math.random().toString(36).slice(2, 8);
   const t0 = Date.now();
@@ -99,6 +174,9 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const mode = (body?.mode as string | undefined)?.trim();
     const prompt = (body?.prompt as string | undefined) ?? '';
+const style = (body?.style as string | undefined) ?? 'conversational';
+const { block: styleBlock, temperature: styleTemp } = styleConfig(style);
+
 
     if (!mode || !['script', 'style'].includes(mode)) {
       return NextResponse.json({ error: 'Invalid mode (use "script" or "style")' }, { status: 400 });
@@ -115,7 +193,7 @@ export async function POST(req: NextRequest) {
     // Use our helper + model switch
     const anthropic = createAnthropic(apiKey);
     const selectedModel = resolveModel(process.env.CLAUDE_MODEL); // 'claude-3.5-sonnet' (default) or 'claude-3-opus'
-    console.log(`[complete-json:${rid}] start mode=${mode} model=${selectedModel}`);
+    console.log(`[complete-json:${rid}] start mode=${mode} style=${style} model=${selectedModel}`);
 
     if (mode === 'script') {
       const example = {
@@ -129,16 +207,29 @@ export async function POST(req: NextRequest) {
         ]
       };
 
-      const data = await completeStrictJSON({
-        anthropic,
-        userPrompt: prompt,
-        schema: zScriptResponse,
-        example,
-        maxTokens: 1800,
-        temperature: 0.7,
-        retries: 2,
-        model: modelId(selectedModel)
-      });
+const combinedPrompt = [
+  prompt.trim(),
+  '',
+  '---',
+  'Apply the following style guidance when writing the scripts:',
+  styleBlock,
+  '',
+  'Requirements:',
+  '- Generate 3 scripts with the exact timing bands requested by the user prompt.',
+  '- Make the emotional bridge between the story and the song feel natural and specific.',
+  '- Avoid repeating the same hook across the three lengths.',
+].join('\n');
+
+const data = await completeStrictJSON({
+  anthropic,
+  userPrompt: combinedPrompt,
+  schema: zScriptResponse,
+  example,
+  maxTokens: 1800,
+  temperature: styleTemp, // <-- per-style temperature
+  retries: 2,
+  model: modelId(selectedModel)
+});
 
       console.log(`[complete-json:${rid}] done in ${Date.now() - t0}ms`);
       return NextResponse.json({ ok: true, data });
