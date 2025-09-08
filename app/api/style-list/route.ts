@@ -19,10 +19,11 @@ export async function GET() {
       ok: true,
       personal: data && data.length ? [data[0]] : []
     });
-  } catch (e: any) {
-    console.error('[style-list] error:', e?.message || e);
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error('[style-list] error:', message);
     return NextResponse.json(
-      { error: 'style-list failed', detail: e?.message ?? String(e) },
+      { error: 'style-list failed', detail: message },
       { status: 400 }
     );
   }
