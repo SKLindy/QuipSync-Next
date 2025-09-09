@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import { createAnthropic, resolveModel, modelId } from '@/lib/llm';
+import { supabaseAdmin } from '@/app/lib/supabase-server';
 
 const zScriptResponse = z.object({
   storyDetails: z.string().min(1),
@@ -63,11 +64,16 @@ ${JSON.stringify(example, null, 2)}`;
   let lastErr: unknown = null;
 
   for (let i = 0; i <= retries; i++) {
-    const msg = await anthropic.messages.create({
+const promptWithStyle = `${prompt}\n\nSTYLE GUIDANCE:\n${styleBlock}`;    
+const promptWithStyle = `${prompt}\n\nSTYLE GUIDANCE:\n${styleBlock}`;
+
+const msg = await anthropic.messages.create({
   model: opts.model,
   max_tokens: maxTokens,
-  temperature,
-  messages
+  temperature: styleTemp ?? 0.6,
+  messages: [
+    { role: 'user', content: promptWithStyle }
+  ]
 });
 
     const text = (msg.content ?? [])
@@ -84,7 +90,13 @@ ${JSON.stringify(example, null, 2)}`;
       messages = [
         ...messages,
         { role: 'assistant', content: text },
-        { role: 'user', content: `Your previous output failed JSON validation:\n${feedback}\n\nReturn ONLY valid JSON that matches the required shape.` }
+        { 
+  role: 'user',
+  content:
+    `Your previous output failed JSON validation:\n${feedback}\n\n` +
+    `Return ONLY valid JSON that matches the required schema.\n\n` +
+    `STYLE GUIDANCE (unchanged):\n${styleBlock}`
+}
       ];
     }
   }
@@ -164,6 +176,24 @@ function styleConfig(style: string): { block: string; temperature: number } {
         ].join('\n')
       };
   }
+}
+
+async function fetchLatestPersonalStyle() {
+  const { data, error } = await supabaseAdmin
+    .from('styles')
+    .select('analysis')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error || !data) return null;
+  // analysis is the JSON we stored: { styleProfile, keyCharacteristics[], samplePhrases[], instructions }
+  return data.analysis as {
+    styleProfile: string;
+    keyCharacteristics: string[];
+    samplePhrases: string[];
+    instructions: string;
+  };
 }
 
 export async function POST(req: NextRequest) {
