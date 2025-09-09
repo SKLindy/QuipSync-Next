@@ -162,7 +162,18 @@ function styleConfig(style: string): { block: string; temperature: number } {
           '- Avoid rambling; keep it grounded.',
         ].join('\n')
       };
-    case 'conversational':
+     case 'personal':
+      // If you want to wire in Supabase later, we’ll swap this to use your saved style.
+      return {
+        temperature: 0.75,
+        block: [
+          'STYLE = PERSONAL' 
+'Use the DJ’s saved personal style.',
+          'Address “you” directly. Match their phrasing, rhythm, and favorite transitions.',
+          'Blend everyday imagery with music-forward momentum.',
+        ].join('\n'),
+      };
+case 'conversational':
     default:
       return {
         temperature: 0.7,
