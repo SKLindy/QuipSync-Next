@@ -278,7 +278,7 @@ const data = await completeStrictJSON({
       const example = {
         styleProfile: 'A cohesive description of the DJ persona',
         keyCharacteristics: ['witty', 'warm', 'punchy'],
-        samplePhrases: ['let's roll the windows down', 'right on cue'],
+        samplePhrases: ['let\'s roll the windows down', 'right on cue'],
         instructions: 'Keep sentences tight, land a hook in first 3 lines.'
       };
 
