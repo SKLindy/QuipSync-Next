@@ -163,16 +163,15 @@ function styleConfig(style: string): { block: string; temperature: number } {
         ].join('\n')
       };
      case 'personal':
-      // If you want to wire in Supabase later, we’ll swap this to use your saved style.
-      return {
-        temperature: 0.75,
-        block: [
-          'STYLE = PERSONAL' 
-'Use the DJ’s saved personal style.',
-          'Address “you” directly. Match their phrasing, rhythm, and favorite transitions.',
-          'Blend everyday imagery with music-forward momentum.',
-        ].join('\n'),
-      };
+  return {
+    temperature: 0.75,
+    block: [
+      'STYLE = PERSONAL',
+      'Use the DJ\'s saved personal style.',
+      'Address "you" directly. Match their phrasing, rhythm, and favorite transitions.',
+      'Blend everyday imagery with music-forward momentum.',
+    ].join('\n'),
+  };
 case 'conversational':
     default:
       return {
@@ -182,7 +181,7 @@ case 'conversational':
           '- Natural, friendly, relatable; talk like a friend.',
           '- Clear transitions; no corporate tone.',
           '- One crisp hook; keep it human.',
-          '- Avoid filler like “um/uh/kind of.”',
+          '- Avoid filler like "um/uh/kind of."',
         ].join('\n')
       };
   }
@@ -279,7 +278,7 @@ const data = await completeStrictJSON({
       const example = {
         styleProfile: 'A cohesive description of the DJ persona',
         keyCharacteristics: ['witty', 'warm', 'punchy'],
-        samplePhrases: ['let’s roll the windows down', 'right on cue'],
+        samplePhrases: ['let's roll the windows down', 'right on cue'],
         instructions: 'Keep sentences tight, land a hook in first 3 lines.'
       };
 
@@ -298,7 +297,7 @@ const data = await completeStrictJSON({
       return NextResponse.json({ ok: true, data });
     }
 
-    // Fallback (shouldn’t hit because we validate `mode` above)
+    // Fallback (shouldn't hit because we validate `mode` above)
     return NextResponse.json({ error: 'Unhandled mode' }, { status: 400 });
   } catch (e: any) {
     console.error(`[complete-json:${rid}] error`, e);
