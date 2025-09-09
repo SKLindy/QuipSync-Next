@@ -64,7 +64,7 @@ ${JSON.stringify(example, null, 2)}`;
   let lastErr: unknown = null;
 
   for (let i = 0; i <= retries; i++) {
-const promptWithStyle = `${prompt}\n\nSTYLE GUIDANCE:\n${styleBlock}`;    
+const promptWithStyle = opts.userPrompt;
 
 const msg = await anthropic.messages.create({
   model: opts.model,
