@@ -69,7 +69,7 @@ const promptWithStyle = opts.userPrompt;
 const msg = await anthropic.messages.create({
   model: opts.model,
   max_tokens: maxTokens,
-  temperature: styleTemp ?? 0.6,
+  temperature: opts.temperature ?? 0.6,
   messages: [
     { role: 'user', content: promptWithStyle }
   ]
